@@ -19,22 +19,29 @@ namespace Server
         // datasets
         FileInfo[] filesList;
 
-        public ConcurrentDictionary<string, List<string>> invertedIndex = new ConcurrentDictionary<string, List<string>>();
+        // parallel safe dict to creating index
+        private ConcurrentDictionary<string, List<string>> invertedIndex;
+
+        // sorted default dict for containing index
+        private SortedDictionary<string, List<string>> sortedInvertedIndex;
 
 
         public Indexer(string dirPath)
         {
             DirectoryInfo dir = new DirectoryInfo(dirPath);
             this.filesList = dir.GetFiles();
+            this.invertedIndex = new ConcurrentDictionary<string, List<string>>();
         }
 
 
-        private static string[] LexemsPreprocessing(string sourceFileText)
+        private static string[] LexemsPreprocessing(string sourceText)
         {
-            string fileText = Regex.Replace(sourceFileText, "< *br */ *>", "");
+            // remove html new-line teg 
+            string fileText = Regex.Replace(sourceText, "< *br */ *>", "");
             fileText = Regex.Replace(fileText, "[0-9]+", "");
 
-            string[] lexemLists = Regex.Matches(fileText, @"\w+").Cast<Match>().Select(m => m.Value).Distinct().ToArray();
+            // match all words, but no capture "_", transform all to lowercase and take only unique 
+            string[] lexemLists = Regex.Matches(fileText, @"[^_\W]+").Cast<Match>().Select(m => m.Value.ToLower()).Distinct().ToArray();
 
             return lexemLists;
         }
@@ -78,6 +85,33 @@ namespace Server
                 }
                 Task.WaitAll(tasks);
             }
+            this.sortedInvertedIndex = new SortedDictionary<string, List<string>>(this.invertedIndex);
+
+            // free memory for non-sorted parallel safe dict
+            this.invertedIndex.Clear();
+        }
+
+
+        // for each lexem in input text, give every file it is presented in
+        public SortedDictionary<string, List<string>> AnalyzeInput(string inputText)
+        {
+            string[] lexems = LexemsPreprocessing(inputText);
+
+            SortedDictionary<string, List<string>> result = new();
+
+            foreach (string lexem in lexems)
+            {
+                if (this.invertedIndex.ContainsKey(lexem))
+                {
+                    result[lexem] = this.sortedInvertedIndex[lexem];
+                }
+                else
+                {
+                    result[lexem] = new List<string>{ "There are no such files" };
+                }
+            }
+                
+            return result;
         }
     }
 }
