@@ -101,7 +101,7 @@ namespace Server
 
             foreach (string lexem in lexems)
             {
-                if (this.invertedIndex.ContainsKey(lexem))
+                if (this.sortedInvertedIndex.ContainsKey(lexem))
                 {
                     result[lexem] = this.sortedInvertedIndex[lexem];
                 }
