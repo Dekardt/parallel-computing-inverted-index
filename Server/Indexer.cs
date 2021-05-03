@@ -95,11 +95,11 @@ namespace Server
 
 
         // for each lexem in input text, give every file it is presented in
-        public SortedDictionary<string, List<string>> AnalyzeInput(string inputText)
+        public Dictionary<string, List<string>> AnalyzeInput(string inputText)
         {
             string[] lexems = LexemsPreprocessing(inputText);
 
-            SortedDictionary<string, List<string>> result = new();
+            Dictionary<string, List<string>> result = new();
 
             foreach (string lexem in lexems)
             {

@@ -48,7 +48,7 @@ namespace Client
 
                 data = new byte[bytes];
                 socket.Receive(data);
-                SortedDictionary<string, List<string>> serverResponse = BinarySerializer.Deserialize<SortedDictionary<string, List<string>>>(data);
+                Dictionary<string, List<string>> serverResponse = BinarySerializer.Deserialize<Dictionary<string, List<string>>>(data);
 
                 foreach (string lexem in serverResponse.Keys)
                 {

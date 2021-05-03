@@ -60,9 +60,9 @@ namespace Server
 
                 Console.WriteLine(DateTime.Now.ToShortTimeString() + ": " + clientMessage);
 
-                SortedDictionary<string, List<string>> resultDict = this.indexer.AnalyzeInput(clientMessage);
+                Dictionary<string, List<string>> resultDict = this.indexer.AnalyzeInput(clientMessage);
 
-                data = BinarySerializer.Serialize<SortedDictionary<string, List<string>>>(resultDict);
+                data = BinarySerializer.Serialize<Dictionary<string, List<string>>>(resultDict);
                 socketHandler.Send(BinarySerializer.Serialize<int>(data.Length));
                 socketHandler.Send(data);
             }
