@@ -14,7 +14,7 @@ namespace Server
         private static string[] ExcludedWords = File.ReadAllText("..//..//..//stop_words.txt").Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
         // amount of threads used for building index
-        private const int ThreadsAmount = 2;
+        private const int ThreadsAmount = 4;
 
         // datasets
         FileInfo[] filesList;
@@ -30,7 +30,6 @@ namespace Server
         {
             DirectoryInfo dir = new DirectoryInfo(dirPath);
             this.filesList = dir.GetFiles();
-            this.invertedIndex = new ConcurrentDictionary<string, List<string>>();
         }
 
 
@@ -41,7 +40,7 @@ namespace Server
             fileText = Regex.Replace(fileText, "[0-9]+", "");
 
             // match all words, but no capture "_", transform all to lowercase and take only unique 
-            string[] lexemLists = Regex.Matches(fileText, @"[^_\W]+").Cast<Match>().Select(m => m.Value.ToLower()).Distinct().ToArray();
+            string[] lexemLists = Regex.Matches(fileText, @"[^_\W]+['`]*[^_\W]*").Cast<Match>().Select(m => m.Value.ToLower()).Distinct().ToArray();
 
             return lexemLists;
         }
@@ -67,7 +66,9 @@ namespace Server
 
         public void CreateIndex()
         {
-            if(ThreadsAmount == 1)
+            this.invertedIndex = new ConcurrentDictionary<string, List<string>>();
+
+            if (ThreadsAmount == 1)
             {
                 ParseBlock(0, this.filesList.Length);
             }
@@ -85,6 +86,7 @@ namespace Server
                 }
                 Task.WaitAll(tasks);
             }
+
             this.sortedInvertedIndex = new SortedDictionary<string, List<string>>(this.invertedIndex);
 
             // free memory for non-sorted parallel safe dict
@@ -105,9 +107,13 @@ namespace Server
                 {
                     result[lexem] = this.sortedInvertedIndex[lexem];
                 }
+                else if (ExcludedWords.Contains(lexem))
+                {
+                    result[lexem] = new List<string>{ "This is stop word" };
+                }
                 else
                 {
-                    result[lexem] = new List<string>{ "There are no such files" };
+                    result[lexem] = new List<string> { "There are no such files" };
                 }
             }
                 
