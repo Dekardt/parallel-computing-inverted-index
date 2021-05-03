@@ -1,10 +1,14 @@
-﻿namespace Server
+﻿using System;
+
+namespace Server
 {
     class ServerProgram
     {
         static void Main(string[] args)
         {
-            Server server = new(8005);
+            Console.WriteLine("Enter server port: ");
+            Server server = new(Convert.ToInt32(Console.ReadLine()));
+
             server.StartWork();
         }
     }

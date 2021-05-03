@@ -12,6 +12,7 @@ namespace Client
         private int port;
         private Socket socket;
 
+
         public Client(int port)
         {
             this.port = port;
@@ -22,28 +23,43 @@ namespace Client
             socket.Connect(ipPoint);
         }
 
-        public SortedDictionary<string, List<string>> SendMessage(string clientMessage)
+
+        public void StartCommunication()
         {
-            //Console.Write("Enter message: ");
+            while (true)
+            {
+                Console.Write("Enter message: ");
 
-            //string message = Console.ReadLine();
-            byte[] data = BinarySerializer.Serialize<string>(clientMessage);
-            this.socket.Send(BinarySerializer.Serialize<int>(data.Length));
-            this.socket.Send(data);
+                string clientMessage = Console.ReadLine();
 
-            data = new byte[512];
-            socket.Receive(data);
-            int bytes = BinarySerializer.Deserialize<int>(data);
+                byte[] data = BinarySerializer.Serialize<string>(clientMessage);
+                this.socket.Send(BinarySerializer.Serialize<int>(data.Length));
+                this.socket.Send(data);
 
-            data = new byte[bytes];
-            socket.Receive(data);
-            SortedDictionary<string, List<string>> answer = BinarySerializer.Deserialize<SortedDictionary<string, List<string>>>(data);
+                if (clientMessage == "0")
+                {
+                    Console.WriteLine("Connection closed, end of work.");
+                    break;
+                }
 
-            return answer;
-        }
+                data = new byte[512];
+                socket.Receive(data);
+                int bytes = BinarySerializer.Deserialize<int>(data);
 
-        public void CloseSocket()
-        {
+                data = new byte[bytes];
+                socket.Receive(data);
+                SortedDictionary<string, List<string>> serverResponse = BinarySerializer.Deserialize<SortedDictionary<string, List<string>>>(data);
+
+                foreach (string lexem in serverResponse.Keys)
+                {
+                    Console.WriteLine(lexem + ": ");
+                    foreach (string fileName in serverResponse[lexem])
+                    {
+                        Console.WriteLine("\t\t" + fileName);
+                    }
+                }
+            }
+
             this.socket.Shutdown(SocketShutdown.Both);
             this.socket.Close();
         }
