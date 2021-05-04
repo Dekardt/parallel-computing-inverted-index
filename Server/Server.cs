@@ -12,6 +12,7 @@ namespace Server
         private int port;
         private Indexer indexer;
 
+
         public Server(int port)
         {
             this.port = port;
@@ -66,7 +67,6 @@ namespace Server
                 socketHandler.Send(BinarySerializer.Serialize<int>(data.Length));
                 socketHandler.Send(data);
             }
-
 
             socketHandler.Shutdown(SocketShutdown.Both);
             socketHandler.Close();

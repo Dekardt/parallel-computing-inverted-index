@@ -15,16 +15,13 @@ namespace Server
         private static string[] ExcludedWords = File.ReadAllText("..//..//..//stop_words.txt").Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
         // amount of threads used for building index
-        private const int ThreadsAmount = 6;
+        private const int ThreadsAmount = 4;
 
         // datasets
         FileInfo[] filesList;
 
         // parallel safe dict to creating index
         private ConcurrentDictionary<string, List<string>> invertedIndex;
-
-        // sorted default dict for containing index
-        private SortedDictionary<string, List<string>> sortedInvertedIndex;
 
         public Indexer(string dirPath)
         {
@@ -89,18 +86,14 @@ namespace Server
                     Task.WaitAll(tasks);
                 }
 
-                this.sortedInvertedIndex = new SortedDictionary<string, List<string>>(this.invertedIndex);
                 SaveIndexToFile();
-
-                // free memory for non-sorted parallel safe dict
-                this.invertedIndex.Clear();
 
                 Console.WriteLine("New index has been created created.");
             }
             else
             {
                 Console.WriteLine("New index wasn't created, used saved one.");
-                this.sortedInvertedIndex = JsonConvert.DeserializeObject<SortedDictionary<string, List<string>>>(File.ReadAllText("savedIndex.txt"));
+                this.invertedIndex = JsonConvert.DeserializeObject<ConcurrentDictionary<string, List<string>>>(File.ReadAllText("savedIndex.txt"));
             }
         }
 
@@ -114,9 +107,9 @@ namespace Server
 
             foreach (string lexem in lexems)
             {
-                if (this.sortedInvertedIndex.ContainsKey(lexem))
+                if (this.invertedIndex.ContainsKey(lexem))
                 {
-                    result[lexem] = this.sortedInvertedIndex[lexem];
+                    result[lexem] = this.invertedIndex[lexem];
                 }
                 else if (ExcludedWords.Contains(lexem))
                 {
@@ -133,7 +126,7 @@ namespace Server
 
         private void SaveIndexToFile()
         {
-            string jsonIndex = JsonConvert.SerializeObject(this.sortedInvertedIndex, Formatting.Indented);
+            string jsonIndex = JsonConvert.SerializeObject(this.invertedIndex, Formatting.Indented);
             File.WriteAllText("savedIndex.txt", jsonIndex);
         }
     }
