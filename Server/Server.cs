@@ -30,7 +30,7 @@ namespace Server
             socketListener.Bind(ipPoint);
             socketListener.Listen();
 
-            Console.WriteLine("Indexer is created. Server is waiting for new connections...");
+            Console.WriteLine("Server is waiting for new connections...");
 
             while (true)
             {

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace Server
 {
@@ -14,7 +15,7 @@ namespace Server
         private static string[] ExcludedWords = File.ReadAllText("..//..//..//stop_words.txt").Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
         // amount of threads used for building index
-        private const int ThreadsAmount = 4;
+        private const int ThreadsAmount = 6;
 
         // datasets
         FileInfo[] filesList;
@@ -24,7 +25,6 @@ namespace Server
 
         // sorted default dict for containing index
         private SortedDictionary<string, List<string>> sortedInvertedIndex;
-
 
         public Indexer(string dirPath)
         {
@@ -66,31 +66,42 @@ namespace Server
 
         public void CreateIndex()
         {
-            this.invertedIndex = new ConcurrentDictionary<string, List<string>>();
-
-            if (ThreadsAmount == 1)
+            if(!File.Exists("savedIndex.txt"))
             {
-                ParseBlock(0, this.filesList.Length);
+                this.invertedIndex = new ConcurrentDictionary<string, List<string>>();
+
+                if (ThreadsAmount == 1)
+                {
+                    ParseBlock(0, this.filesList.Length);
+                }
+                else
+                {
+                    float filePerThread = this.filesList.Length / (float)ThreadsAmount;
+
+                    Task[] tasks = new Task[ThreadsAmount];
+
+                    for (int iter = 0; iter < ThreadsAmount; iter++)
+                    {
+                        int startFile = (int)(filePerThread * iter);
+                        int endFile = (int)(filePerThread * (iter + 1));
+                        tasks[iter] = Task.Run(() => ParseBlock(startFile, endFile));
+                    }
+                    Task.WaitAll(tasks);
+                }
+
+                this.sortedInvertedIndex = new SortedDictionary<string, List<string>>(this.invertedIndex);
+                SaveIndexToFile();
+
+                // free memory for non-sorted parallel safe dict
+                this.invertedIndex.Clear();
+
+                Console.WriteLine("New index has been created created.");
             }
             else
             {
-                float filePerThread = this.filesList.Length / (float)ThreadsAmount;
-
-                Task[] tasks = new Task[ThreadsAmount];
-
-                for(int iter=0; iter<ThreadsAmount; iter++)
-                {
-                    int startFile = (int)(filePerThread * iter);
-                    int endFile = (int)(filePerThread * (iter + 1));
-                    tasks[iter] = Task.Run(() => ParseBlock(startFile, endFile));
-                }
-                Task.WaitAll(tasks);
+                Console.WriteLine("New index wasn't created, used saved one.");
+                this.sortedInvertedIndex = JsonConvert.DeserializeObject<SortedDictionary<string, List<string>>>(File.ReadAllText("savedIndex.txt"));
             }
-
-            this.sortedInvertedIndex = new SortedDictionary<string, List<string>>(this.invertedIndex);
-
-            // free memory for non-sorted parallel safe dict
-            this.invertedIndex.Clear();
         }
 
 
@@ -118,6 +129,12 @@ namespace Server
             }
                 
             return result;
+        }
+
+        private void SaveIndexToFile()
+        {
+            string jsonIndex = JsonConvert.SerializeObject(this.sortedInvertedIndex, Formatting.Indented);
+            File.WriteAllText("savedIndex.txt", jsonIndex);
         }
     }
 }
