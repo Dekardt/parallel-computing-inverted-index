@@ -18,10 +18,11 @@ namespace Server
         private const int ThreadsAmount = 4;
 
         // datasets
-        FileInfo[] filesList;
+        private FileInfo[] filesList;
 
         // parallel safe dict to creating index
-        private ConcurrentDictionary<string, List<string>> invertedIndex;
+        private ConcurrentDictionary<string, ConcurrentQueue<string>> invertedIndex;
+
 
         public Indexer(string dirPath)
         {
@@ -54,7 +55,16 @@ namespace Server
                 {
                     if (!ExcludedWords.Contains(lexem))
                     {
-                        this.invertedIndex.AddOrUpdate(lexem, new List<string> { curFile.Name }, (k, v) => v.Append(curFile.Name).ToList());
+                        this.invertedIndex.AddOrUpdate(lexem,
+                            _ => { 
+                                ConcurrentQueue<string> newQ = new ConcurrentQueue<string>(); 
+                                newQ.Enqueue(curFile.Name); 
+                                return newQ; 
+                            },
+                            (k, v) => { 
+                                v.Enqueue(curFile.Name); 
+                                return v; 
+                            });
                     }
                 }
             }
@@ -65,7 +75,7 @@ namespace Server
         {
             if(!File.Exists("savedIndex.txt"))
             {
-                this.invertedIndex = new ConcurrentDictionary<string, List<string>>();
+                this.invertedIndex = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
 
                 if (ThreadsAmount == 1)
                 {
@@ -93,7 +103,7 @@ namespace Server
             else
             {
                 Console.WriteLine("New index wasn't created, used saved one.");
-                this.invertedIndex = JsonConvert.DeserializeObject<ConcurrentDictionary<string, List<string>>>(File.ReadAllText("savedIndex.txt"));
+                this.invertedIndex = JsonConvert.DeserializeObject<ConcurrentDictionary<string, ConcurrentQueue<string>>>(File.ReadAllText("savedIndex.txt"));
             }
         }
 
@@ -109,7 +119,7 @@ namespace Server
             {
                 if (this.invertedIndex.ContainsKey(lexem))
                 {
-                    result[lexem] = this.invertedIndex[lexem];
+                    result[lexem] = this.invertedIndex[lexem].ToList();
                 }
                 else if (ExcludedWords.Contains(lexem))
                 {
@@ -123,6 +133,7 @@ namespace Server
                 
             return result;
         }
+
 
         private void SaveIndexToFile()
         {
