@@ -12,6 +12,7 @@ namespace Server
         private int port;
         private Indexer indexer;
 
+
         public Server(int port)
         {
             this.port = port;
@@ -30,7 +31,7 @@ namespace Server
             socketListener.Bind(ipPoint);
             socketListener.Listen();
 
-            Console.WriteLine("Indexer is created. Server is waiting for new connections...");
+            Console.WriteLine("Server is waiting for new connections...");
 
             while (true)
             {
@@ -60,13 +61,12 @@ namespace Server
 
                 Console.WriteLine(DateTime.Now.ToShortTimeString() + ": " + clientMessage);
 
-                SortedDictionary<string, List<string>> resultDict = this.indexer.AnalyzeInput(clientMessage);
+                Dictionary<string, List<string>> resultDict = this.indexer.AnalyzeInput(clientMessage);
 
-                data = BinarySerializer.Serialize<SortedDictionary<string, List<string>>>(resultDict);
+                data = BinarySerializer.Serialize<Dictionary<string, List<string>>>(resultDict);
                 socketHandler.Send(BinarySerializer.Serialize<int>(data.Length));
                 socketHandler.Send(data);
             }
-
 
             socketHandler.Shutdown(SocketShutdown.Both);
             socketHandler.Close();

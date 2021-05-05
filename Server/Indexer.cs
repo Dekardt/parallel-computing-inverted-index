@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
+using Newtonsoft.Json;
 
 namespace Server
 {
@@ -17,13 +18,10 @@ namespace Server
         private const int ThreadsAmount = 4;
 
         // datasets
-        FileInfo[] filesList;
+        private FileInfo[] filesList;
 
         // parallel safe dict to creating index
-        private ConcurrentDictionary<string, List<string>> invertedIndex;
-
-        // sorted default dict for containing index
-        private SortedDictionary<string, List<string>> sortedInvertedIndex;
+        private ConcurrentDictionary<string, ConcurrentQueue<string>> invertedIndex;
 
 
         public Indexer(string dirPath)
@@ -57,7 +55,16 @@ namespace Server
                 {
                     if (!ExcludedWords.Contains(lexem))
                     {
-                        this.invertedIndex.AddOrUpdate(lexem, new List<string> { curFile.Name }, (k, v) => v.Append(curFile.Name).ToList());
+                        this.invertedIndex.AddOrUpdate(lexem,
+                            _ => { 
+                                ConcurrentQueue<string> newQ = new ConcurrentQueue<string>(); 
+                                newQ.Enqueue(curFile.Name); 
+                                return newQ; 
+                            },
+                            (k, v) => { 
+                                v.Enqueue(curFile.Name); 
+                                return v; 
+                            });
                     }
                 }
             }
@@ -66,46 +73,53 @@ namespace Server
 
         public void CreateIndex()
         {
-            this.invertedIndex = new ConcurrentDictionary<string, List<string>>();
-
-            if (ThreadsAmount == 1)
+            if(!File.Exists("savedIndex.txt"))
             {
-                ParseBlock(0, this.filesList.Length);
+                this.invertedIndex = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
+
+                if (ThreadsAmount == 1)
+                {
+                    ParseBlock(0, this.filesList.Length);
+                }
+                else
+                {
+                    float filePerThread = this.filesList.Length / (float)ThreadsAmount;
+
+                    Task[] tasks = new Task[ThreadsAmount];
+
+                    for (int iter = 0; iter < ThreadsAmount; iter++)
+                    {
+                        int startFile = (int)(filePerThread * iter);
+                        int endFile = (int)(filePerThread * (iter + 1));
+                        tasks[iter] = Task.Run(() => ParseBlock(startFile, endFile));
+                    }
+                    Task.WaitAll(tasks);
+                }
+
+                SaveIndexToFile();
+
+                Console.WriteLine("New index has been created created.");
             }
             else
             {
-                float filePerThread = this.filesList.Length / (float)ThreadsAmount;
-
-                Task[] tasks = new Task[ThreadsAmount];
-
-                for(int iter=0; iter<ThreadsAmount; iter++)
-                {
-                    int startFile = (int)(filePerThread * iter);
-                    int endFile = (int)(filePerThread * (iter + 1));
-                    tasks[iter] = Task.Run(() => ParseBlock(startFile, endFile));
-                }
-                Task.WaitAll(tasks);
+                Console.WriteLine("New index wasn't created, used saved one.");
+                this.invertedIndex = JsonConvert.DeserializeObject<ConcurrentDictionary<string, ConcurrentQueue<string>>>(File.ReadAllText("savedIndex.txt"));
             }
-
-            this.sortedInvertedIndex = new SortedDictionary<string, List<string>>(this.invertedIndex);
-
-            // free memory for non-sorted parallel safe dict
-            this.invertedIndex.Clear();
         }
 
 
         // for each lexem in input text, give every file it is presented in
-        public SortedDictionary<string, List<string>> AnalyzeInput(string inputText)
+        public Dictionary<string, List<string>> AnalyzeInput(string inputText)
         {
             string[] lexems = LexemsPreprocessing(inputText);
 
-            SortedDictionary<string, List<string>> result = new();
+            Dictionary<string, List<string>> result = new();
 
             foreach (string lexem in lexems)
             {
-                if (this.sortedInvertedIndex.ContainsKey(lexem))
+                if (this.invertedIndex.ContainsKey(lexem))
                 {
-                    result[lexem] = this.sortedInvertedIndex[lexem];
+                    result[lexem] = this.invertedIndex[lexem].ToList();
                 }
                 else if (ExcludedWords.Contains(lexem))
                 {
@@ -118,6 +132,13 @@ namespace Server
             }
                 
             return result;
+        }
+
+
+        private void SaveIndexToFile()
+        {
+            string jsonIndex = JsonConvert.SerializeObject(this.invertedIndex, Formatting.Indented);
+            File.WriteAllText("savedIndex.txt", jsonIndex);
         }
     }
 }
