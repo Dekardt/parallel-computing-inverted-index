@@ -16,11 +16,11 @@ namespace Client
         public Client(int port)
         {
             this.port = port;
-
-            IPEndPoint ipPoint = new IPEndPoint(IPAddress.Parse(ServerAdress), port);
+            IPEndPoint ipPoint = new IPEndPoint(IPAddress.Parse(ServerAdress), this.port);
 
             this.socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             socket.Connect(ipPoint);
+            Console.WriteLine("Connected to sever");
         }
 
 
@@ -31,6 +31,11 @@ namespace Client
                 Console.Write("Enter message: ");
 
                 string clientMessage = Console.ReadLine();
+
+                if (clientMessage == "")
+                {
+                    continue;
+                }
 
                 byte[] data = BinarySerializer.Serialize<string>(clientMessage);
                 this.socket.Send(BinarySerializer.Serialize<int>(data.Length));
