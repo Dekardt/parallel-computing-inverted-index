@@ -12,11 +12,12 @@ namespace Server
     {
         private static readonly int port = 8005;
         private Indexer indexer;
-        private string projectDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
+        private int clientCounter;
 
         public Server()
         {
-            this.indexer = new Indexer(projectDir+ "/indexer-assets/datasets/");
+            this.indexer = new Indexer("indexer-assets/datasets/");
+            this.clientCounter = 0;
         }
 
 
@@ -35,12 +36,14 @@ namespace Server
             while (true)
             {
                 Socket socketHandler = socketListener.Accept();
-                Task clientTask = Task.Run(() => ServeClient(socketHandler));
+                this.clientCounter++;
+                Task clientTask = Task.Run(() => ServeClient(socketHandler, this.clientCounter));
+
             }
         }
 
 
-        private void ServeClient(Socket socketHandler)
+        private void ServeClient(Socket socketHandler, int clientId)
         {
             while(true)
             {
@@ -54,11 +57,11 @@ namespace Server
 
                 if(clientMessage == "0")
                 {
-                    Console.WriteLine("Client end work");
+                    Console.WriteLine("Client" + clientId.ToString() + " end work");
                     break;
                 }
 
-                Console.WriteLine(DateTime.Now.ToShortTimeString() + ": " + clientMessage);
+                Console.WriteLine(DateTime.Now.ToShortTimeString() + "\tClient " + clientId.ToString() + " : " + clientMessage);
 
                 Dictionary<string, List<string>> resultDict = this.indexer.AnalyzeInput(clientMessage);
 

@@ -5,6 +5,7 @@ datasets/
 # .NET Core build folders
 bin/
 obj/
+Properties/
 
 # Common node modules locations
 /node_modules
