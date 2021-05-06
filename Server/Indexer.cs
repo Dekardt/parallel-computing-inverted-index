@@ -130,7 +130,27 @@ namespace Server
                     result[lexem] = new List<string> { "There are no such files" };
                 }
             }
-                
+
+            List<string> lexemesIntersection;
+
+            if (result.Count > 1)
+            {
+                lexemesIntersection = result.Values.Aggregate((previousList, nextList) => previousList.Intersect(nextList).ToList());
+
+                if (lexemesIntersection.Count == 0)
+                {
+                    result["All words"] = new List<string> { "There are no common files" };
+                }
+                else if (lexemesIntersection.Count == 1 && lexemesIntersection[0] == "This is stop word")
+                {
+                    result["All words"] = new List<string> { "All words are stop words" };
+                }
+                else
+                {
+                    result["All words"] = lexemesIntersection;
+                }
+            }
+
             return result;
         }
 
