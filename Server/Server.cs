@@ -4,20 +4,19 @@ using System.Net.Sockets;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BinarySerializerNamespace;
+using System.IO;
 
 namespace Server
 {
     class Server
     {
-        private int port;
+        private static readonly int port = 8005;
         private Indexer indexer;
+        private string projectDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
 
-
-        public Server(int port)
+        public Server()
         {
-            this.port = port;
-
-            this.indexer = new Indexer("datasets/");
+            this.indexer = new Indexer(projectDir+ "/indexer-assets/datasets/");
         }
 
 
@@ -25,13 +24,13 @@ namespace Server
         {
             this.indexer.CreateIndex();
 
-            IPEndPoint ipPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), this.port);
+            IPEndPoint ipPoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), port);
             Socket socketListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             socketListener.Bind(ipPoint);
             socketListener.Listen();
 
-            Console.WriteLine("Server is waiting for new connections...");
+            Console.WriteLine("Server is waiting for new connections on port: " + port.ToString());
 
             while (true)
             {

@@ -11,8 +11,10 @@ namespace Server
 {
     class Indexer
     {
+        private static string projectDir = Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName;
+
         // file with words that will not be included in inverted index, as articles or pronouns
-        private static string[] ExcludedWords = File.ReadAllText("..//..//..//stop_words.txt").Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        private static string[] ExcludedWords = File.ReadAllText(projectDir + "/indexer-assets/stop_words.txt").Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
         // amount of threads used for building index
         private const int ThreadsAmount = 4;
@@ -73,7 +75,7 @@ namespace Server
 
         public void CreateIndex()
         {
-            if(!File.Exists("savedIndex.txt"))
+            if(!File.Exists(projectDir + "/indexer-assets/savedIndex.txt") && new FileInfo(projectDir + "/indexer-assets/savedIndex.txt").Length == 0)
             {
                 this.invertedIndex = new ConcurrentDictionary<string, ConcurrentQueue<string>>();
 
@@ -158,7 +160,7 @@ namespace Server
         private void SaveIndexToFile()
         {
             string jsonIndex = JsonConvert.SerializeObject(this.invertedIndex, Formatting.Indented);
-            File.WriteAllText("savedIndex.txt", jsonIndex);
+            File.WriteAllText(projectDir + "/indexer-assets/savedIndex.txt", jsonIndex);
         }
     }
 }
