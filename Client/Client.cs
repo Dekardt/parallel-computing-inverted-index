@@ -4,69 +4,73 @@ using System.Net;
 using System.Net.Sockets;
 using BinarySerializerNamespace;
 
-namespace Client
-{
-    class Client
-    {
-        private static readonly string ServerAdress = "127.0.0.1";
-        private int port;
-        private Socket socket;
+namespace Client {
+
+    class Client {
+        private const string _serverAdress = "127.0.0.1";
+        private readonly int _port;
+        private readonly Socket _socket;
 
 
-        public Client(int port)
-        {
-            this.port = port;
-            IPEndPoint ipPoint = new IPEndPoint(IPAddress.Parse(ServerAdress), this.port);
+        public Client(int port) {
 
-            this.socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            socket.Connect(ipPoint);
+            _port = port;
+            IPEndPoint ipPoint = new IPEndPoint(IPAddress.Parse(_serverAdress), _port);
+
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _socket.Connect(ipPoint);
             Console.WriteLine("Connected to sever");
         }
 
 
-        public void StartCommunication()
-        {
-            while (true)
-            {
-                Console.Write("Enter message: ");
+        public void StartCommunication() {
+            while (true) {
 
+                Console.Write("Enter message to send or enter '0' to end work: ");
                 string clientMessage = Console.ReadLine();
 
-                if (clientMessage == "")
-                {
+                if (clientMessage == "") {
                     continue;
                 }
 
-                byte[] data = BinarySerializer.Serialize<string>(clientMessage);
-                this.socket.Send(BinarySerializer.Serialize<int>(data.Length));
-                this.socket.Send(data);
+                byte[] sendingBuffer = BinarySerializer.Serialize<string>(clientMessage);
 
-                if (clientMessage == "0")
-                {
+                // send message size
+                _socket.Send(BinarySerializer.Serialize<int>(sendingBuffer.Length));
+
+                _socket.Send(sendingBuffer);
+
+                if (clientMessage == "0") {
                     Console.WriteLine("Connection closed, end of work.");
                     break;
                 }
 
-                data = new byte[512];
-                socket.Receive(data);
-                int bytes = BinarySerializer.Deserialize<int>(data);
+                sendingBuffer = new byte[512];
 
-                data = new byte[bytes];
-                socket.Receive(data);
-                Dictionary<string, List<string>> serverResponse = BinarySerializer.Deserialize<Dictionary<string, List<string>>>(data);
+                // receive answer size
+                _socket.Receive(sendingBuffer);
+                int bytes = BinarySerializer.Deserialize<int>(sendingBuffer);
 
-                foreach (string lexem in serverResponse.Keys)
-                {
-                    Console.WriteLine(lexem + ": ");
-                    foreach (string fileName in serverResponse[lexem])
+                sendingBuffer = new byte[bytes];
+                _socket.Receive(sendingBuffer);
+                var serverDictResponse = BinarySerializer.Deserialize<Dictionary<string, List<string>>>(sendingBuffer);
+
+                if (serverDictResponse.Count == 0) {
+                    Console.WriteLine("None of the words were found in the files");
+                } else {
+                    foreach (string lexem in serverDictResponse.Keys)
                     {
-                        Console.WriteLine("\t\t" + fileName);
+                        Console.WriteLine(lexem + ": ");
+                        foreach (string fileName in serverDictResponse[lexem])
+                        {
+                            Console.WriteLine("\t\t" + fileName);
+                        }
                     }
                 }
             }
 
-            this.socket.Shutdown(SocketShutdown.Both);
-            this.socket.Close();
+            _socket.Shutdown(SocketShutdown.Both);
+            _socket.Close();
         }
     }
 }
