@@ -1,5 +1,6 @@
-### Project datasets ###
+### Project files ###
 datasets/
+savedIndex.txt
 
 ### DotnetCore ###
 # .NET Core build folders
