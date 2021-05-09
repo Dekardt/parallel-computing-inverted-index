@@ -82,4 +82,4 @@ Execute the following commands in strict order:
     
 3. Type message in client's program console. Enter _0_ to end work.
 
-After executing this steps, for both server and client in directories "Server/bin/Debug/net5.0" and "Client/bin/Debug/net5.0" you can find files Server.exe and Client.exe respectively. Use them to run both programs skipping steps (1.1.-1.3. and 2.1.-2.3.), but step order still strict (run server -> wait for the notification -> run client). You can run only one server and multiple clients simultaneously.
+After executing this steps, for both server and client you can skip steps 1.2. and 2.2, using only "dotnet run" command, but step order still strict (run server -> wait for the notification -> run client). You can run only one server and multiple clients simultaneously.
